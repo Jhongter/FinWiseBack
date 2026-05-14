@@ -28,29 +28,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Desabilita CSRF (API stateless não usa cookies de sessão)
             .csrf(AbstractHttpConfigurer::disable)
-
-            // Habilita CORS com nossa configuração
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // Sem sessão no servidor: cada request precisa do token
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("POST", "/usuarios").permitAll() // Cadastro público
-                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("POST", "/usuarios").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                // Todo o restante exige autenticação
                 .anyRequest().authenticated()
             )
-
-            // Necessário para o H2 Console (que usa frames)
-            .headers(headers -> headers.frameOptions(fo -> fo.disable()))
-
-            // Insere o filtro JWT antes do filtro padrão de autenticação
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -59,8 +45,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Aceita qualquer origem em dev; em produção, troque por sua URL real
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of(
+            "https://extraordinary-clafoutis-6fa598.netlify.app",
+            "http://localhost:3000",
+            "http://localhost:5500",
+            "http://127.0.0.1:5500"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(false);

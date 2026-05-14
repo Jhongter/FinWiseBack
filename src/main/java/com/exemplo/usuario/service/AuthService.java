@@ -22,16 +22,19 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    /**
-     * Autentica o usuário e retorna um token JWT.
-     * A mensagem de erro é genérica para não revelar se o e-mail existe ou não.
-     */
     public LoginResponse login(LoginRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Credenciais inválidas"));
 
         if (!passwordEncoder.matches(request.senha(), usuario.getSenha())) {
             throw new IllegalArgumentException("Credenciais inválidas");
+        }
+
+        // Bloqueia login se e-mail não foi confirmado
+        if (!usuario.isEmailVerificado()) {
+            throw new IllegalArgumentException(
+                "E-mail não confirmado. Verifique sua caixa de entrada e clique no link de confirmação."
+            );
         }
 
         String token = jwtService.gerarToken(usuario.getEmail());
