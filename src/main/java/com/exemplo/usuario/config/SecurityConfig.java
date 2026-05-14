@@ -63,7 +63,7 @@ public class SecurityConfig {
         // Aceita qualquer origem em dev; em produção, troque por sua URL real
         config.setAllowedOriginPatterns(List.of(
                  "http://localhost:3000",
-            "https://finwis-gestaofinanceira.netlify.app/"
+            "https://finwise-gestaofinanceira.netlify.app/"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
