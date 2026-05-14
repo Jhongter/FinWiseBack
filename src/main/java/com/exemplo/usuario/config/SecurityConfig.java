@@ -61,9 +61,8 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         // Aceita qualquer origem em dev; em produção, troque por sua URL real
         config.setAllowedOriginPatterns(List.of(
-                "https://subtle-frangipane-be31c3.netlify.app",
                  "http://localhost:3000",
-            "https://extraordinary-clafoutis-6fa598.netlify.app/"
+            "https://extraordinary-clafoutis-6fa598.netlify.app/",
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
