@@ -49,8 +49,7 @@ public class SecurityConfig {
             "https://extraordinary-clafoutis-6fa598.netlify.app",
             "http://localhost:3000",
             "http://localhost:5500",
-            "http://127.0.0.1:5500",
-            "https://finwise-gestaofinanceira.netlify.app"
+            "http://127.0.0.1:5500"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
