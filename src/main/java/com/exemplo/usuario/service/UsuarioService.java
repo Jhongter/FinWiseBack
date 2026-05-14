@@ -1,81 +1,103 @@
 package com.exemplo.usuario.service;
 
 import com.exemplo.usuario.domain.Usuario;
-import com.exemplo.usuario.dto.UsuarioRequest;
-import com.exemplo.usuario.dto.UsuarioResponse;
+import com.exemplo.usuario.dto.*;
 import com.exemplo.usuario.repository.UsuarioRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          EmailService emailService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
+    @Transactional
     public UsuarioResponse criar(UsuarioRequest request) {
-        validarEmailDuplicado(request.email());
+        if (usuarioRepository.findByEmail(request.email()).isPresent()) {
+            throw new IllegalArgumentException("E-mail já cadastrado");
+        }
 
-        String senhaCriptografada = passwordEncoder.encode(request.senha());
-        Usuario usuario = new Usuario(request.nome(), request.email(), senhaCriptografada);
-        Usuario salvo = usuarioRepository.save(usuario);
+        String senhaHash = passwordEncoder.encode(request.senha());
+        Usuario usuario = new Usuario(request.nome(), request.email(), senhaHash);
 
-        return toResponse(salvo);
+        // Gera token de confirmação de e-mail
+        String token = UUID.randomUUID().toString();
+        usuario.setTokenConfirmacao(token);
+
+        usuarioRepository.save(usuario);
+
+        // Envia e-mail de confirmação (silencioso se não configurado)
+        emailService.enviarConfirmacao(usuario.getEmail(), usuario.getNome(), token);
+
+        return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
     }
 
     public List<UsuarioResponse> listarTodos() {
-        return usuarioRepository.findAll()
-                .stream()
-                .map(this::toResponse)
+        return usuarioRepository.findAll().stream()
+                .map(u -> new UsuarioResponse(u.getId(), u.getNome(), u.getEmail()))
                 .toList();
     }
 
     public UsuarioResponse buscarPorId(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + id));
-
-        return toResponse(usuario);
+        Usuario u = usuarioRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail());
     }
 
+    @Transactional
     public UsuarioResponse atualizar(Long id, UsuarioRequest request) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + id));
-
-        usuarioRepository.findByEmail(request.email())
-                .filter(outro -> !outro.getId().equals(id))
-                .ifPresent(outro -> {
-                    throw new IllegalArgumentException("Já existe um usuário com este e-mail");
-                });
-
-        String senhaCriptografada = passwordEncoder.encode(request.senha());
-        usuario.atualizarDados(request.nome(), request.email(), senhaCriptografada);
-        Usuario atualizado = usuarioRepository.save(usuario);
-
-        return toResponse(atualizado);
+        Usuario u = usuarioRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        u.atualizarDados(request.nome(), request.email(), passwordEncoder.encode(request.senha()));
+        return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail());
     }
 
+    @Transactional
     public void remover(Long id) {
         if (!usuarioRepository.existsById(id)) {
-            throw new IllegalArgumentException("Usuário não encontrado: " + id);
+            throw new IllegalArgumentException("Usuário não encontrado");
         }
         usuarioRepository.deleteById(id);
     }
 
-    private void validarEmailDuplicado(String email) {
-        if (usuarioRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Já existe um usuário com este e-mail");
+    /** Troca a senha do usuário autenticado */
+    @Transactional
+    public void trocarSenha(TrocaSenhaRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        if (!passwordEncoder.matches(request.senhaAtual(), usuario.getSenha())) {
+            throw new IllegalArgumentException("Senha atual incorreta");
         }
+
+        usuario.setSenha(passwordEncoder.encode(request.novaSenha()));
+        usuarioRepository.save(usuario);
     }
 
-    private UsuarioResponse toResponse(Usuario usuario) {
-        return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
+    /** Confirma o e-mail via token */
+    @Transactional
+    public void confirmarEmail(String token) {
+        Usuario usuario = usuarioRepository.findByTokenConfirmacao(token)
+                .orElseThrow(() -> new IllegalArgumentException("Token inválido ou expirado"));
+
+        usuario.setEmailVerificado(true);
+        usuario.setTokenConfirmacao(null);
+        usuarioRepository.save(usuario);
     }
 }

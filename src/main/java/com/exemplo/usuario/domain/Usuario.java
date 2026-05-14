@@ -1,11 +1,7 @@
 package com.exemplo.usuario.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "usuarios")
@@ -24,9 +20,16 @@ public class Usuario {
     @Column(nullable = false)
     private String senha;
 
-    protected Usuario() {
-        // construtor protegido para o JPA
-    }
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal salario = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private boolean emailVerificado = false;
+
+    @Column
+    private String tokenConfirmacao;
+
+    protected Usuario() {}
 
     public Usuario(String nome, String email, String senha) {
         this.nome = nome;
@@ -34,25 +37,22 @@ public class Usuario {
         this.senha = senha;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getSenha() {
-        return senha;
-    }
+    public Long getId() { return id; }
+    public String getNome() { return nome; }
+    public String getEmail() { return email; }
+    public String getSenha() { return senha; }
+    public BigDecimal getSalario() { return salario; }
+    public boolean isEmailVerificado() { return emailVerificado; }
+    public String getTokenConfirmacao() { return tokenConfirmacao; }
 
     public void atualizarDados(String nome, String email, String senha) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
     }
+
+    public void setSenha(String senha) { this.senha = senha; }
+    public void setSalario(BigDecimal salario) { this.salario = salario; }
+    public void setEmailVerificado(boolean emailVerificado) { this.emailVerificado = emailVerificado; }
+    public void setTokenConfirmacao(String tokenConfirmacao) { this.tokenConfirmacao = tokenConfirmacao; }
 }
