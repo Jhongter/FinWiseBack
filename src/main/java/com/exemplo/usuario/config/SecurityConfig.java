@@ -62,7 +62,7 @@ public class SecurityConfig {
         // Aceita qualquer origem em dev; em produção, troque por sua URL real
         config.setAllowedOriginPatterns(List.of(
                  "http://localhost:3000",
-            "https://extraordinary-clafoutis-6fa598.netlify.app/",
+            "https://extraordinary-clafoutis-6fa598.netlify.app/"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
