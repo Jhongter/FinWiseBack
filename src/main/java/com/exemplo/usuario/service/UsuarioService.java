@@ -9,21 +9,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
-                          PasswordEncoder passwordEncoder,
-                          EmailService emailService) {
+                          PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
     }
 
     @Transactional
@@ -35,14 +31,11 @@ public class UsuarioService {
         String senhaHash = passwordEncoder.encode(request.senha());
         Usuario usuario = new Usuario(request.nome(), request.email(), senhaHash);
 
-        // Gera token de confirmação de e-mail
-        String token = UUID.randomUUID().toString();
-        usuario.setTokenConfirmacao(token);
+        // Confirma e-mail automaticamente (sem verificação por e-mail)
+        usuario.setEmailVerificado(true);
+        usuario.setTokenConfirmacao(null);
 
         usuarioRepository.save(usuario);
-
-        // Envia e-mail de confirmação (silencioso se não configurado)
-        emailService.enviarConfirmacao(usuario.getEmail(), usuario.getNome(), token);
 
         return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
     }
@@ -75,7 +68,6 @@ public class UsuarioService {
         usuarioRepository.deleteById(id);
     }
 
-    /** Troca a senha do usuário autenticado */
     @Transactional
     public void trocarSenha(TrocaSenhaRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -90,14 +82,8 @@ public class UsuarioService {
         usuarioRepository.save(usuario);
     }
 
-    /** Confirma o e-mail via token */
     @Transactional
     public void confirmarEmail(String token) {
-        Usuario usuario = usuarioRepository.findByTokenConfirmacao(token)
-                .orElseThrow(() -> new IllegalArgumentException("Token inválido ou expirado"));
-
-        usuario.setEmailVerificado(true);
-        usuario.setTokenConfirmacao(null);
-        usuarioRepository.save(usuario);
+        // Mantido para não quebrar rotas existentes, mas não faz nada
     }
 }

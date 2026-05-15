@@ -30,13 +30,6 @@ public class AuthService {
             throw new IllegalArgumentException("Credenciais inválidas");
         }
 
-        // Bloqueia login se e-mail não foi confirmado
-        if (!usuario.isEmailVerificado()) {
-            throw new IllegalArgumentException(
-                "E-mail não confirmado. Verifique sua caixa de entrada e clique no link de confirmação."
-            );
-        }
-
         String token = jwtService.gerarToken(usuario.getEmail());
         return new LoginResponse(token, usuario.getNome(), usuario.getEmail());
     }
