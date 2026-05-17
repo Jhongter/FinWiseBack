@@ -5,7 +5,6 @@ import com.exemplo.usuario.domain.Usuario;
 import com.exemplo.usuario.dto.*;
 import com.exemplo.usuario.repository.TransacaoRepository;
 import com.exemplo.usuario.repository.UsuarioRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +13,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class TransacaoService {
+public class TransacaoService implements ITransacaoService {
 
     private final TransacaoRepository transacaoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -25,29 +24,25 @@ public class TransacaoService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    private String emailAtual() {
-        return SecurityContextHolder.getContext().getAuthentication().getName();
-    }
-
-    private Usuario usuarioAtual() {
-        return usuarioRepository.findByEmail(emailAtual())
+    private Usuario buscarUsuario(String email) {
+        return usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
     }
 
-    /** Lista todas as transações do usuário logado */
-    public TransacoesListResponse listar() {
+    @Override
+    public TransacoesListResponse listar(String email) {
         List<TransacaoResponse> lista = transacaoRepository
-                .findByUsuarioEmailOrderByDataDesc(emailAtual())
+                .findByUsuarioEmailOrderByDataDesc(email)
                 .stream()
                 .map(TransacaoResponse::de)
                 .collect(Collectors.toList());
         return new TransacoesListResponse(lista);
     }
 
-    /** Cria uma nova transação */
+    @Override
     @Transactional
-    public TransacaoResponse criar(TransacaoRequest req) {
-        Usuario usuario = usuarioAtual();
+    public TransacaoResponse criar(String email, TransacaoRequest req) {
+        Usuario usuario = buscarUsuario(email);
         Transacao t = new Transacao(
                 req.description(), req.amount(), req.type(),
                 req.category(), req.date(), usuario
@@ -55,18 +50,18 @@ public class TransacaoService {
         return TransacaoResponse.de(transacaoRepository.save(t));
     }
 
-    /** Remove uma transação (só se pertencer ao usuário logado) */
+    @Override
     @Transactional
-    public void remover(Long id) {
-        Transacao t = transacaoRepository.findByIdAndUsuarioEmail(id, emailAtual())
+    public void remover(String email, Long id) {
+        Transacao t = transacaoRepository.findByIdAndUsuarioEmail(id, email)
                 .orElseThrow(() -> new IllegalArgumentException("Transação não encontrada"));
         transacaoRepository.delete(t);
     }
 
-    /** Retorna o resumo financeiro (salário, receitas, despesas, saldo, categorias) */
-    public ResumoResponse resumo() {
-        Usuario usuario = usuarioAtual();
-        List<Transacao> transacoes = transacaoRepository.findByUsuarioEmailOrderByDataDesc(emailAtual());
+    @Override
+    public ResumoResponse resumo(String email) {
+        Usuario usuario = buscarUsuario(email);
+        List<Transacao> transacoes = transacaoRepository.findByUsuarioEmailOrderByDataDesc(email);
 
         BigDecimal receitas = BigDecimal.ZERO;
         BigDecimal despesas = BigDecimal.ZERO;
@@ -83,17 +78,8 @@ public class TransacaoService {
         }
 
         BigDecimal saldo = receitas.subtract(despesas);
-
         return new ResumoResponse(new ResumoResponse.SummaryData(
                 usuario.getSalario(), receitas, despesas, saldo, categorias
         ));
-    }
-
-    /** Atualiza o salário do usuário */
-    @Transactional
-    public void atualizarSalario(SalarioRequest req) {
-        Usuario usuario = usuarioAtual();
-        usuario.setSalario(req.amount());
-        usuarioRepository.save(usuario);
     }
 }

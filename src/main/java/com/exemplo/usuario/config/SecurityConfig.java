@@ -46,7 +46,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-            "https://finwise-gestaofinanceira.netlify.app",
+            "https://extraordinary-clafoutis-6fa598.netlify.app",
             "http://localhost:3000",
             "http://localhost:5500",
             "http://127.0.0.1:5500"

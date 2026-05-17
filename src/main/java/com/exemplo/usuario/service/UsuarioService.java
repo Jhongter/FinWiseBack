@@ -3,7 +3,6 @@ package com.exemplo.usuario.service;
 import com.exemplo.usuario.domain.Usuario;
 import com.exemplo.usuario.dto.*;
 import com.exemplo.usuario.repository.UsuarioRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class UsuarioService {
+public class UsuarioService implements IUsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -22,6 +21,7 @@ public class UsuarioService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Override
     @Transactional
     public UsuarioResponse criar(UsuarioRequest request) {
         if (usuarioRepository.findByEmail(request.email()).isPresent()) {
@@ -30,28 +30,28 @@ public class UsuarioService {
 
         String senhaHash = passwordEncoder.encode(request.senha());
         Usuario usuario = new Usuario(request.nome(), request.email(), senhaHash);
-
-        // Confirma e-mail automaticamente (sem verificação por e-mail)
         usuario.setEmailVerificado(true);
         usuario.setTokenConfirmacao(null);
 
         usuarioRepository.save(usuario);
-
         return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
     }
 
+    @Override
     public List<UsuarioResponse> listarTodos() {
         return usuarioRepository.findAll().stream()
                 .map(u -> new UsuarioResponse(u.getId(), u.getNome(), u.getEmail()))
                 .toList();
     }
 
+    @Override
     public UsuarioResponse buscarPorId(Long id) {
         Usuario u = usuarioRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail());
     }
 
+    @Override
     @Transactional
     public UsuarioResponse atualizar(Long id, UsuarioRequest request) {
         Usuario u = usuarioRepository.findById(id)
@@ -60,6 +60,7 @@ public class UsuarioService {
         return new UsuarioResponse(u.getId(), u.getNome(), u.getEmail());
     }
 
+    @Override
     @Transactional
     public void remover(Long id) {
         if (!usuarioRepository.existsById(id)) {
@@ -68,9 +69,9 @@ public class UsuarioService {
         usuarioRepository.deleteById(id);
     }
 
+    @Override
     @Transactional
-    public void trocarSenha(TrocaSenhaRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    public void trocarSenha(String email, TrocaSenhaRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
 
@@ -82,8 +83,12 @@ public class UsuarioService {
         usuarioRepository.save(usuario);
     }
 
+    @Override
     @Transactional
-    public void confirmarEmail(String token) {
-        // Mantido para não quebrar rotas existentes, mas não faz nada
+    public void atualizarSalario(String email, SalarioRequest request) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        usuario.setSalario(request.amount());
+        usuarioRepository.save(usuario);
     }
 }

@@ -1,12 +1,13 @@
 package com.exemplo.usuario.controller;
 
 import com.exemplo.usuario.dto.*;
-import com.exemplo.usuario.service.UsuarioService;
+import com.exemplo.usuario.service.IUsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,9 +17,9 @@ import java.util.List;
 @Tag(name = "Usuários", description = "CRUD de usuários")
 public class UsuarioController {
 
-    private final UsuarioService usuarioService;
+    private final IUsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(IUsuarioService usuarioService) {
         this.usuarioService = usuarioService;
     }
 
@@ -62,7 +63,8 @@ public class UsuarioController {
     @PutMapping("/senha")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Troca a senha do usuário autenticado")
-    public void trocarSenha(@Valid @RequestBody TrocaSenhaRequest request) {
-        usuarioService.trocarSenha(request);
+    public void trocarSenha(@AuthenticationPrincipal String email,
+                             @Valid @RequestBody TrocaSenhaRequest request) {
+        usuarioService.trocarSenha(email, request);
     }
 }
