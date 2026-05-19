@@ -1,5 +1,6 @@
 package com.exemplo.usuario.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,6 +14,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -20,6 +23,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+
+    /**
+     * URL do frontend — lida do application.properties (${app.url}).
+     * Pode-se passar múltiplos valores separados por vírgula via variável de
+     * ambiente APP_URL para aceitar, por exemplo, Netlify + localhost ao mesmo
+     * tempo:  APP_URL=https://meuapp.netlify.app,http://localhost:5500
+     */
+    @Value("${app.url:http://localhost:5500}")
+    private String appUrl;
 
     public SecurityConfig(JwtFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
@@ -34,7 +46,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("POST", "/usuarios").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui.html"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -45,15 +61,32 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
+
+        // Aceita todas as origens listadas em app.url (suporte a múltiplos valores)
+        List<String> origins = Arrays.stream(appUrl.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        // Adiciona origens de desenvolvimento fixas
+        List<String> devOrigins = List.of(
             "https://finwise-gestaofinanceira.netlify.app",
-            "http://localhost:3000",
             "http://localhost:5500",
-            "http://127.0.0.1:5500"
-        ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+            "http://localhost:8080",
+            "http://127.0.0.1:5500",
+            "http://127.0.0.1:3000"
+        );
+
+        List<String> allOrigins = new java.util.ArrayList<>(origins);
+        devOrigins.forEach(o -> { if (!allOrigins.contains(o)) allOrigins.add(o); });
+
+        config.setAllowedOriginPatterns(allOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(false);
+        config.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
